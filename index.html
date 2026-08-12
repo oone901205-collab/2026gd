@@ -331,18 +331,23 @@ body.dark .bcell.edge{background:#1b3a2a;border-color:#2f6a48;}
       다른 PC에서 같은 주소로 열었을 때도 동일하게 나타납니다. 연결하지 않아도 이 PC(이 브라우저)에는
       그대로 저장됩니다.
     </div>
+    <div class="hint" style="margin-bottom:10px;line-height:1.5;background:#fff6d8;border:2px solid #e8cf7a;border-radius:10px;padding:8px 10px;color:#6b5310">
+      ⚠️ <b>이미 다른 PC에서 설정을 넣어둔 서버에 새로 연결할 때는</b> 반드시 아래 <b>"서버 설정 불러오기"</b>를
+      먼저 눌러주세요. "연결 정보만 저장"을 누르면 이 기기의 내용을 서버로 보내지 않고 연결 정보만 저장되니 안전합니다.
+    </div>
     <div class="field"><label>Apps Script 웹앱 주소</label>
       <input type="text" id="syncUrlInput" class="kbin" placeholder="https://script.google.com/macros/s/.../exec"></div>
     <div class="field"><label>비밀키 (Apps Script에 설정한 SECRET_KEY와 동일하게)</label>
       <input type="text" id="syncKeyInput" class="kbin" placeholder="예: school-fair-2026"></div>
     <div class="inline" style="margin:10px 0;flex-wrap:wrap;gap:8px">
       <button class="btn sm teal" id="syncTestBtn">🔌 연결 테스트</button>
-      <button class="btn sm" id="syncPullBtn">⬇️ 서버 설정 지금 불러오기</button>
+      <button class="btn sm blue" id="syncPullBtn">⬇️ 서버 설정 불러오기</button>
+      <button class="btn sm coral" id="syncPushBtn">⬆️ 이 기기 설정을 서버로 올리기</button>
       <button class="btn sm gray" id="syncClearBtn">연결 해제</button>
     </div>
     <div id="syncStatus" class="hint" style="min-height:18px"></div>
   </div>
-  <div class="ft"><button class="btn sm" data-close="syncWin">닫기</button><button class="btn sm blue" id="syncSaveBtn">저장</button></div>
+  <div class="ft"><button class="btn sm" data-close="syncWin">닫기</button><button class="btn sm blue" id="syncSaveBtn">연결 정보만 저장</button></div>
 </div></div>
 
 <!-- PIN -->
@@ -1293,6 +1298,7 @@ function getSyncCfg(){
 }
 function setSyncCfg(cfg){try{localStorage.setItem(SYNC_LS_KEY,JSON.stringify(cfg));}catch(e){}}
 function syncUrlWithParam(url,extra){return url+(url.indexOf("?")>=0?"&":"?")+extra;}
+var lastSyncError=null, lastSyncOkAt=null;
 function syncPush(){
   var cfg=getSyncCfg();
   if(!cfg.url)return;
@@ -1301,8 +1307,11 @@ function syncPush(){
       method:"POST",
       headers:{"Content-Type":"text/plain;charset=utf-8"},   // 이렇게 해야 Apps Script에서 사전 요청(preflight) 없이 바로 받아짐
       body:JSON.stringify(state)
-    }).catch(function(){});
-  }catch(e){}
+    }).then(function(r){return r.json();}).then(function(res){
+      if(res&&res.ok){lastSyncError=null;lastSyncOkAt=Date.now();}
+      else{lastSyncError=(res&&res.error)||"서버가 저장을 거부했어요(비밀키 확인)";console.warn("동기화 저장 실패:",lastSyncError);}
+    }).catch(function(err){lastSyncError="네트워크 오류로 저장 실패";console.warn("동기화 저장 실패:",err);});
+  }catch(e){lastSyncError=String(e);}
 }
 function syncPull(timeoutMs,cb){
   var cfg=getSyncCfg();
@@ -1556,7 +1565,15 @@ function initSync(){
   var cfg=getSyncCfg();
   $("#syncUrlInput").value=cfg.url||"";
   $("#syncKeyInput").value=cfg.key||"";
-  $("#syncStatus").textContent=cfg.url?"현재 연결된 주소가 있어요. 자동으로 저장·불러오기가 동작합니다.":"아직 연결되지 않았어요. 이 PC에만 저장됩니다.";
+  if(!cfg.url){
+    $("#syncStatus").textContent="아직 연결되지 않았어요. 이 PC에만 저장됩니다.";
+  }else if(lastSyncError){
+    $("#syncStatus").textContent="⚠️ 최근 저장 실패: "+lastSyncError;
+  }else if(lastSyncOkAt){
+    $("#syncStatus").textContent="✅ 마지막 저장 성공: "+new Date(lastSyncOkAt).toLocaleTimeString();
+  }else{
+    $("#syncStatus").textContent="현재 연결된 주소가 있어요. 자동으로 저장·불러오기가 동작합니다.";
+  }
 }
 function currentSyncInputCfg(){
   return {url:$("#syncUrlInput").value.trim(),key:$("#syncKeyInput").value.trim()};
@@ -1581,6 +1598,23 @@ $("#syncPullBtn").onclick=function(){
     }
   });
 };
+$("#syncPushBtn").onclick=function(){
+  setSyncCfg(currentSyncInputCfg());
+  var cfg=getSyncCfg();
+  if(!cfg.url){$("#syncStatus").textContent="⚠️ 주소를 먼저 입력해주세요";return;}
+  if(!confirm("이 기기(브라우저)에 있는 설정을 서버로 올릴까요?\n서버에 이미 다른 PC의 설정이 저장되어 있다면 그 내용을 덮어씁니다."))return;
+  $("#syncStatus").textContent="서버로 올리는 중...";
+  try{
+    fetch(syncUrlWithParam(cfg.url,"key="+encodeURIComponent(cfg.key||"")),{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(state)
+    }).then(function(r){return r.json();}).then(function(res){
+      if(res&&res.ok){$("#syncStatus").textContent="✅ 이 기기의 설정을 서버로 올렸어요.";toast("서버로 저장했어요");}
+      else{$("#syncStatus").textContent="⚠️ 실패: "+((res&&res.error)||"알 수 없는 오류");}
+    }).catch(function(){$("#syncStatus").textContent="⚠️ 연결 실패(주소를 확인해주세요)";});
+  }catch(e){$("#syncStatus").textContent="⚠️ 연결 실패";}
+};
 $("#syncClearBtn").onclick=function(){
   setSyncCfg({url:"",key:""});
   $("#syncUrlInput").value="";$("#syncKeyInput").value="";
@@ -1588,10 +1622,11 @@ $("#syncClearBtn").onclick=function(){
   toast("동기화 연결을 해제했어요");
 };
 $("#syncSaveBtn").onclick=function(){
+  // 연결 정보(주소·비밀키)만 저장하고, 이 기기의 설정 내용은 절대 자동으로 전송하지 않음
+  // (다른 PC에 이미 저장된 서버 내용을 실수로 덮어쓰는 것을 방지하기 위함)
   setSyncCfg(currentSyncInputCfg());
-  syncPush();
   closeWin("syncWin");
-  toast("동기화 설정을 저장했어요");
+  toast("연결 정보를 저장했어요. 서버의 최신 설정이 필요하면 '서버 설정 불러오기'를 눌러주세요");
 };
 
 /* ===================== 기타 설정 ===================== */
