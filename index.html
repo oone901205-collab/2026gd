@@ -27,6 +27,8 @@
   --fsz:1;
   /* 요소별 글자 색상(메뉴 > 화면 설정에서 조절) */
   --tc-title:#26324a; --tc-menu:#26324a; --tc-npc-name:#2a5bb0; --tc-npc-body:#5f6f8c;
+  /* 화면 테두리(베젤) 안전 여백 %, 스탠바이미 등에서 상하좌우가 가려지지 않도록(화면 설정에서 조절) */
+  --bezel:2;
 }
 body.dark{
   --ink:#eaf1ff; --ink-soft:#a7b6d4;
@@ -43,8 +45,31 @@ body{
 }
 h1,h2,h3,button{font-family:'Jua',sans-serif;font-weight:400;}
 
-/* #app: 세로(9:16) 화면을 기준으로 제목→과목 메뉴→지도 순서의 세로 배치 구조 */
-#app{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;align-items:stretch;}
+/* #app: 세로(9:16) 화면을 기준으로 제목→과목 메뉴→지도 순서의 세로 배치 구조.
+   가로모드에서는 좌측 2/3(mainPanel, 기존 화면 그대로) + 우측 1/3(posterPanel, 부스 포스터)로 나뉨 */
+/* #app: 세로(9:16) 화면을 기준으로 제목→과목 메뉴→지도 순서의 세로 배치 구조.
+   가로모드에서는 좌측 2/3(mainPanel, 기존 화면 그대로) + 우측 1/3(posterPanel, 부스 포스터)로 나뉨.
+   --bezel: 스탠바이미 등 베젤이 있는 화면에서 상하좌우 요소가 가려지지 않도록 주는 여백(화면 설정에서 조절) */
+#app{position:fixed;inset:0;overflow:hidden;box-sizing:border-box;
+  padding:calc(var(--bezel) * 1vh) calc(var(--bezel) * 1vw);
+  display:flex;flex-direction:row;align-items:stretch;}
+#mainPanel{position:relative;flex:1 1 auto;min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:stretch;}
+/* 세로모드에서는 포스터 영역을 완전히 숨김(0폭) → mainPanel이 전체 폭을 그대로 차지 */
+#posterPanel{display:none;position:relative;flex:0 0 0;overflow:hidden;}
+/* 우측 포스터는 A4 세로(210:297) 비율 이미지를 쓸 예정이라, 지도 영역(2/3)에서 남던 좌우 여백을
+   줄이고 그만큼을 포스터 영역에 더 배분함(지도 실제 렌더 비율 기준 실측 계산: 약 46:54) */
+body:not(.portrait) #posterPanel{display:flex;flex:0 0 54%;flex-direction:column;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.28));
+  border-left:3px solid rgba(255,255,255,.6);box-shadow:-6px 0 18px rgba(20,34,58,.12);}
+body:not(.portrait) #mainPanel{flex:0 0 46%;}
+#posterInner{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;}
+#posterImg{display:none;width:100%;height:100%;object-fit:contain;border-radius:14px;
+  box-shadow:0 10px 26px rgba(20,34,58,.28);animation:posterFade .35s ease;}
+@keyframes posterFade{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:scale(1);}}
+#posterPlaceholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  color:var(--ink-soft);text-align:center;padding:20px;}
+#posterPlaceholder .ph-icon{font-size:min(14vh,84px);filter:drop-shadow(0 4px 6px var(--shadow));}
+#posterPlaceholder .ph-text{font-family:'Jua';font-size:calc(15px * var(--fsz));line-height:1.5;color:var(--ink);}
 
 /* 부드러운 하늘 장식 */
 #waves{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.45;
@@ -135,16 +160,16 @@ body.dark .boothChip .nm{color:var(--tc-menu);}
   background:linear-gradient(180deg,#ffffff,#eef4fc);
   box-shadow:0 7px 0 rgba(20,34,58,.16),0 12px 22px var(--shadow);}
 body.dark #npcBubble{background:linear-gradient(180deg,#2a3450,#222c44);}
-#npcName{font-family:'Jua';font-size:calc(14px * var(--fsz));color:var(--tc-npc-name);margin-bottom:3px;display:flex;align-items:center;gap:8px;}
+#npcName{font-family:'Jua';font-size:calc(14px * var(--fsz));color:var(--tc-npc-name);margin-bottom:3px;text-align:center;padding:0 78px 0 8px;}
 #npcBubble.big #npcName{color:var(--tc-npc-name);}
 #npcTitle{font-family:'Jua';font-size:calc(clamp(16px,2.2vh,22px) * var(--fsz));color:var(--tc-npc-body);display:none;margin-bottom:2px;}
 #npcText{font-size:calc(clamp(13px,1.8vh,16px) * var(--fsz));line-height:1.5;color:var(--tc-npc-body);max-height:14vh;overflow-y:auto;}
 #npcBubble::after{content:"";position:absolute;left:-2px;bottom:18px;width:16px;height:16px;transform:rotate(45deg);
   background:linear-gradient(135deg,#fff,#eef4fc);border-left:4px solid #fff;border-bottom:4px solid #fff;}
-/* 경로 초기화 버튼: 부스 선택 중일 때만 노출 */
-#routeResetBtn{margin-left:auto;flex:0 0 auto;font-family:'Jua';font-size:calc(11px * var(--fsz));
+/* 경로 초기화 버튼: 부스 선택 중일 때만 노출. 이름줄이 가운데 정렬될 수 있도록 흐름 밖(우상단 고정)으로 뺌 */
+#routeResetBtn{position:absolute;right:10px;top:9px;font-family:'Jua';font-size:calc(11px * var(--fsz));
   padding:4px 9px;border-radius:999px;border:2px solid #fff;cursor:pointer;color:#fff;
-  background:linear-gradient(180deg,#ffb0a8,var(--coral) 60%,var(--coral-d));box-shadow:0 2px 0 var(--coral-d);display:none;}
+  background:linear-gradient(180deg,#ffb0a8,var(--coral) 60%,var(--coral-d));box-shadow:0 2px 0 var(--coral-d);display:none;z-index:2;}
 #routeResetBtn.show{display:inline-flex;align-items:center;gap:3px;}
 #routeResetBtn:active{transform:translateY(2px);box-shadow:0 0 0 var(--coral-d);}
 
@@ -211,6 +236,8 @@ input[type=color]{width:54px;height:42px;border:3px solid #d3deee;border-radius:
 .editcard{border:3px solid #dfe8f4;border-radius:14px;background:var(--panel-2);padding:12px;margin-bottom:10px;}
 body.dark .editcard{border-color:#39456a;}
 .editcard .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.posterThumb{flex:0 0 auto;width:40px;height:40px;border-radius:8px;overflow:hidden;background:var(--panel-2);border:2px solid #d3deee;}
+.posterThumb img{width:100%;height:100%;object-fit:cover;}
 .editcard .row:last-child{margin-bottom:0;}
 .swatches{display:flex;flex-wrap:wrap;gap:7px;}
 .sw{width:32px;height:32px;border:3px solid #fff;border-radius:9px;cursor:pointer;box-shadow:0 3px 0 rgba(20,34,58,.2);}
@@ -250,6 +277,18 @@ body.dark .bcell.edge{background:#1b3a2a;border-color:#2f6a48;}
 .keypad{display:grid;grid-template-columns:repeat(3,74px);gap:9px;justify-content:center;}
 .keypad .btn{font-size:22px;padding:12px 0;}
 
+/* 대기화면에서 확실하게 첫 소리를 들려주기 위한 "눌러서 소리 켜기" 안내(첫 터치가 메뉴에 걸려도
+   소리가 묻히지 않도록, 소리 전용의 작은 버튼을 따로 둠) */
+#soundHint{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:6;
+  display:none;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;cursor:pointer;
+  font-family:'Jua';font-size:calc(13px * var(--fsz));color:#fff;
+  background:linear-gradient(180deg,rgba(61,123,224,.92),rgba(28,74,158,.92));
+  box-shadow:0 4px 0 rgba(20,34,58,.25),0 8px 16px var(--shadow);
+  animation:soundHintPulse 1.8s ease-in-out infinite;}
+#soundHint.show{display:flex;}
+#soundHint span{font-size:calc(16px * var(--fsz));}
+@keyframes soundHintPulse{0%,100%{transform:translateX(-50%) scale(1);}50%{transform:translateX(-50%) scale(1.06);}}
+
 .toast{position:fixed;left:50%;bottom:9%;transform:translateX(-50%);z-index:60;color:#fff;font-family:'Jua';font-size:calc(16px * var(--fsz));
   padding:11px 22px;border-radius:999px;border:3px solid #fff;background:linear-gradient(180deg,var(--navy),var(--navy-d));
   opacity:0;transition:opacity .2s;box-shadow:0 5px 12px var(--shadow);}
@@ -281,6 +320,7 @@ body.dark .bcell.edge{background:#1b3a2a;border-color:#2f6a48;}
 </head>
 <body class="portrait">
 <div id="app">
+  <div id="mainPanel">
   <div id="waves"></div>
 
   <!-- 상단 제목 -->
@@ -295,7 +335,7 @@ body.dark .bcell.edge{background:#1b3a2a;border-color:#2f6a48;}
   </div>
 
   <!-- 지도(잔디밭) 무대: 남은 영역을 모두 채움 -->
-  <div id="stage"><svg id="map" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  <div id="stage"><svg id="map" xmlns="http://www.w3.org/2000/svg"></svg><div id="soundHint"><span>🔊</span> 눌러서 소리 켜기</div></div>
 
   <!-- 좌상단 톱니 메뉴 -->
   <div id="menuBtn" aria-label="메뉴" role="button" tabindex="0">
@@ -306,9 +346,21 @@ body.dark .bcell.edge{background:#1b3a2a;border-color:#2f6a48;}
   <div id="npc">
     <div id="npcFace"><div class="ph">🦉</div></div>
     <div id="npcBubble">
-      <div id="npcName"><span id="npcNameTxt">안내 도우미</span><button id="routeResetBtn" type="button">↺ 경로 초기화</button></div>
+      <div id="npcName"><span id="npcNameTxt">안내 도우미</span><button id="routeResetBtn" type="button">↺ 초기화</button></div>
       <div id="npcTitle"></div>
       <div id="npcText">위에서 과목을 고르고 부스를 선택하면, 현재 위치에서 가는 길을 알려줄게요!</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- 가로모드 전용: 우측 1/3 부스 포스터 영역(세로모드에서는 항상 숨김) -->
+  <div id="posterPanel">
+    <div id="posterInner">
+      <img id="posterImg" alt="부스 포스터">
+      <div id="posterPlaceholder">
+        <div class="ph-icon">🎁</div>
+        <div class="ph-text">부스를 선택하면<br>포스터가 여기 크게 나타나요</div>
+      </div>
     </div>
   </div>
 </div>
@@ -479,6 +531,10 @@ body.dark .bcell.edge{background:#1b3a2a;border-color:#2f6a48;}
   <div class="bd">
     <div class="field"><label>화면 비율 (사용 기기)</label><select id="screenSel"></select><div class="hint">스탠바이미 등 세로 거치형 화면은 <b>9:16</b>을 권장해요. '자동'은 지금 화면을 꽉 채웁니다.</div></div>
     <div class="field"><label>화면 방향</label><div class="seg" id="oriSeg"><button class="btn sm" data-v="portrait">▯ 세로</button><button class="btn sm" data-v="landscape">▭ 가로</button></div></div>
+    <div class="field"><label>화면 테두리(베젤) 안전 여백 <span id="bezelVal">2%</span></label>
+      <input type="range" id="bezelSlider" min="0" max="6" step="0.5" value="2">
+      <div class="hint">스탠바이미처럼 화면 테두리(베젤)가 있는 기기에서, 상하좌우 요소가 베젤에 가려지지 않도록 살짝 안쪽으로 여백을 줍니다.</div>
+    </div>
     <div class="field"><label>화면 모드</label><div class="seg" id="themeSeg"><button class="btn sm" data-v="light">☀️ 밝게</button><button class="btn sm" data-v="dark">🌙 어둡게</button></div></div>
     <div class="field"><label>전체 배경 그라데이션 (밝은 색 권장)</label>
       <div class="inline"><span class="hint" style="width:44px">위</span><input type="color" id="bgTop"><span class="hint" style="width:44px">가운데</span><input type="color" id="bgMid"><span class="hint" style="width:44px">아래</span><input type="color" id="bgBot"></div>
@@ -659,7 +715,7 @@ function defaults(){
     npc:{name:"안내 도우미",text:"위에서 과목을 고르고 부스를 선택하면, 현재 위치에서 가는 길을 알려줄게요!",img:null,imgName:"",scale:100},
     gate:{enabled:false,theme:themes[0].id,name:"학교 입구",icon:"🚪",desc:"학교 정문으로 안내해드릴게요."},
     screen:{ratio:"9:16",orientation:"portrait",theme:"light",font:"'Black Han Sans', sans-serif",fontScale:115,
-            bgTop:"#dff1ff",bgMid:"#bfe0fb",bgBot:"#a7d0f4",fieldBright:10,
+            bgTop:"#dff1ff",bgMid:"#bfe0fb",bgBot:"#a7d0f4",fieldBright:10,bezel:2,
             textTitle:"#26324a",textMenu:"#26324a",textNpcName:"#2a5bb0",textNpcBody:"#5f6f8c"},
     etc:{arrowColor:"#ff5a7a",arrowWidth:8,speed:90,soundEnabled:true,soundVolume:55,soundGap:60}
   };
@@ -1157,7 +1213,7 @@ function renderThemes(){
     d.innerHTML='<span class="ic" style="--th:'+th.color+';background:'+th.color+'"></span><span class="nm"></span>';
     d.querySelector(".ic").textContent=th.icon||"📌";
     var nmEl=d.querySelector(".nm");nmEl.textContent=th.name;nmEl.style.fontFamily=state.screen.font;
-    d.onclick=function(){ selTheme=(selTheme===th.id?null:th.id); renderThemes(); renderBoothPanel(); updateIdleSound(); };
+    d.onclick=function(){ selTheme=(selTheme===th.id?null:th.id); renderThemes(); renderBoothPanel(); updateIdleSound(); updatePosterPanel(); };
     host.appendChild(d);
   });
 }
@@ -1207,7 +1263,7 @@ function selectBooth(id){
   }else{
     route=null;toast("이 부스는 아직 잔디밭에 배치되지 않았어요");
   }
-  renderBoothPanel();renderNpc();drawMap();updateIdleSound();
+  renderBoothPanel();renderNpc();drawMap();updateIdleSound();updatePosterPanel();
 }
 function renderNpc(){
   var b=findSelectable(selBooth);
@@ -1239,7 +1295,7 @@ function applyNpcFace(){
 }
 $("#routeResetBtn").onclick=function(){
   selBooth=null;route=null;walker.dist=0;walker.pauseUntil=0;
-  renderBoothPanel();renderNpc();drawMap();updateIdleSound();toast("경로를 초기화했어요");
+  renderBoothPanel();renderNpc();drawMap();updateIdleSound();updatePosterPanel();toast("경로를 초기화했어요");
 };
 
 /* ===================== 적용 ===================== */
@@ -1259,6 +1315,7 @@ function applyScreen(){
   de.style.setProperty("--tc-menu",effectiveTextColor("textMenu"));
   de.style.setProperty("--tc-npc-name",effectiveTextColor("textNpcName"));
   de.style.setProperty("--tc-npc-body",effectiveTextColor("textNpcBody"));
+  de.style.setProperty("--bezel",(state.screen.bezel==null?2:state.screen.bezel));
   if(v==="auto"){app.style.left=app.style.top="0";app.style.width="100%";app.style.height="100%";}
   else{var p=v.split(":"),A=parseFloat(p[0])/parseFloat(p[1]),sw=innerWidth,sh=innerHeight;
     var W=Math.min(sw,sh*A),H=Math.min(sh,sw/A);
@@ -1280,7 +1337,7 @@ function applyTitle(){
 function applyAll(){
   applyScreen();applyTitle();applyNpcFace();
   if(selBooth&&state.slots.some(function(s){return s.boothId===selBooth;}))route=computeRoute(selBooth);
-  drawMap();renderThemes();renderBoothPanel();renderNpc();
+  drawMap();renderThemes();renderBoothPanel();renderNpc();updatePosterPanel();
 }
 
 /* ===================== 저장 ===================== */
@@ -1377,7 +1434,7 @@ function initGateSettings(){
   $("#gateEnabled").onchange=function(){
     state.gate.enabled=this.checked;
     if(!state.gate.enabled&&selBooth==="__GATE__"){selBooth=null;route=null;}
-    save();renderBoothPanel();renderThemes();renderNpc();drawMap();updateIdleSound();
+    save();renderBoothPanel();renderThemes();renderNpc();drawMap();updateIdleSound();updatePosterPanel();
   };
   var sel=$("#gateThemeSel");sel.innerHTML="";
   state.themes.forEach(function(th){var o=document.createElement("option");o.value=th.id;o.textContent=th.icon+" "+th.name;sel.appendChild(o);});
@@ -1507,13 +1564,37 @@ function renderBoothCards(){
     card.innerHTML='<div class="row"><div class="icb" style="width:44px;height:44px;flex:0 0 44px"></div><input type="text" class="kbin grow bnm" maxlength="16" value="'+esc(b.name)+'" placeholder="부스 이름"><button class="btn sm coral delB">삭제</button></div>'
       +'<div class="row"><span style="width:70px;font-size:12px">구역 기호</span><input type="text" class="kbin bcode" maxlength="8" style="width:120px;text-transform:uppercase" value="'+esc(b.code||"")+'" placeholder="'+esc(boothCode(b))+'"><span class="hint grow">비우면 자동(예: '+esc(boothCode(b))+')</span></div>'
       +'<div class="row"><textarea class="kbin bdesc" maxlength="140" placeholder="소개 내용">'+esc(b.desc)+'</textarea></div>'
+      +'<div class="row" style="align-items:center;flex-wrap:wrap"><span style="width:70px;font-size:12px">포스터</span><div class="posterThumb"></div><button class="btn sm posterPick" style="white-space:nowrap">🖼️ 업로드</button><button class="btn sm gray posterClear" style="white-space:nowrap">삭제</button></div>'
+      +'<div class="row"><span style="width:70px"></span><span class="hint grow posterName"></span></div>'
       +'<div class="row exrow" style="flex-wrap:wrap;gap:5px"></div><div class="row iconrow" style="display:none"></div>';
     var icb=card.querySelector(".icb");icb.textContent=b.icon||"⭐";var iconrow=card.querySelector(".iconrow");
     icb.onclick=function(){iconrow.style.display=iconrow.style.display==="none"?"flex":"none";if(!iconrow.dataset.b){buildIconPicker(iconrow,b.icon,function(ic){b.icon=ic;icb.textContent=ic;save();refreshBooth();});iconrow.dataset.b="1";}};
     card.querySelector(".bnm").oninput=function(){b.name=this.value;save();refreshBooth();};
     card.querySelector(".bcode").oninput=function(){b.code=this.value.toUpperCase();save();refreshBooth();if(selBooth===b.id)renderNpc();};
     card.querySelector(".bdesc").oninput=function(){b.desc=this.value;save();if(selBooth===b.id)renderNpc();};
-    card.querySelector(".delB").onclick=function(){state.booths=state.booths.filter(function(x){return x.id!==b.id;});state.slots=state.slots.filter(function(s){return s.boothId!==b.id;});if(selBooth===b.id){selBooth=null;route=null;}buildSlots();save();renderBoothCards();refreshBooth();renderNpc();};
+    var thumb=card.querySelector(".posterThumb"),pname=card.querySelector(".posterName");
+    function refreshPosterThumb(){
+      thumb.innerHTML=b.poster?'<img src="'+b.poster+'" alt="포스터">':"";
+      pname.textContent=b.poster?(b.posterName||"포스터 있음"):"업로드된 포스터 없음(가로모드 오른쪽에 크게 표시돼요)";
+    }
+    refreshPosterThumb();
+    card.querySelector(".posterPick").onclick=function(){
+      var f=document.createElement("input");f.type="file";f.accept="image/*";
+      f.onchange=function(){
+        var fl=f.files[0];if(!fl)return;
+        resizeImageFile(fl,1600,0.85,function(dataUrl){
+          b.poster=dataUrl;b.posterName=fl.name;save();refreshPosterThumb();
+          if(selBooth===b.id)updatePosterPanel();
+          toast("포스터를 등록했어요");
+        });
+      };
+      f.click();
+    };
+    card.querySelector(".posterClear").onclick=function(){
+      b.poster=null;b.posterName="";save();refreshPosterThumb();
+      if(selBooth===b.id)updatePosterPanel();
+    };
+    card.querySelector(".delB").onclick=function(){state.booths=state.booths.filter(function(x){return x.id!==b.id;});state.slots=state.slots.filter(function(s){return s.boothId!==b.id;});if(selBooth===b.id){selBooth=null;route=null;}buildSlots();save();renderBoothCards();refreshBooth();renderNpc();updatePosterPanel();};
     var ex=card.querySelector(".exrow");var lbl=document.createElement("span");lbl.className="hint";lbl.style.width="100%";lbl.textContent="예시(누르면 적용):";ex.appendChild(lbl);
     SUBJECT_EXAMPLES.slice(0,8).forEach(function(sx){var t=document.createElement("button");t.className="btn sm gray";t.style.padding="3px 6px";t.textContent=sx.i+sx.n;t.onclick=function(){b.name=sx.n;b.icon=sx.i;save();renderBoothCards();refreshBooth();};ex.appendChild(t);});
     host.appendChild(card);
@@ -1521,23 +1602,69 @@ function renderBoothCards(){
 }
 $("#boothAdd").onclick=function(){var thid=$("#boothThemeSel").value;if(!thid){toast("먼저 테마를 만들어주세요");return;}state.booths.push({id:bid(),theme:thid,name:"새 부스",icon:"⭐",code:"",desc:""});buildSlots();save();renderBoothCards();fillPickBooth();renderBoard();refreshBooth();};
 function refreshBooth(){drawMap();renderThemes();renderBoothPanel();}
+/* ===================== 이미지 업로드 전 자동 축소(용량 절약) =====================
+   업로드한 원본 사진은 수 MB가 될 수 있어, 그대로 저장하면 동기화 데이터가 커져서 저장이
+   느려지거나 브라우저 저장공간 한도에 걸릴 수 있음. 화면에 보여줄 용도로는 이 정도 크기면
+   충분하므로, 캔버스로 자동 축소·재압축한 뒤 저장함(선명도 차이는 거의 느껴지지 않음). */
+function resizeImageFile(file,maxDim,quality,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var w=img.width,h=img.height;
+      if(w>maxDim||h>maxDim){
+        if(w>=h){h=Math.round(h*maxDim/w);w=maxDim;}else{w=Math.round(w*maxDim/h);h=maxDim;}
+      }
+      try{
+        var canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+        var ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);
+        var out=canvas.toDataURL("image/jpeg",quality||0.85);
+        cb(out);
+      }catch(err){ cb(e.target.result); }  // 축소 실패 시 원본 그대로 사용
+    };
+    img.onerror=function(){ cb(e.target.result); };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+/* 투명 배경이 중요한 이미지(캐릭터·뱃지·아이콘 등)는 PNG를 그대로 쓰되 크기만 제한해서 축소(JPEG 변환 X) */
+function resizeImageFileKeepAlpha(file,maxDim,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var w=img.width,h=img.height;
+      if(w<=maxDim&&h<=maxDim){ cb(e.target.result); return; }  // 이미 충분히 작으면 원본 그대로
+      if(w>=h){h=Math.round(h*maxDim/w);w=maxDim;}else{w=Math.round(w*maxDim/h);h=maxDim;}
+      try{
+        var canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+        var ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);
+        cb(canvas.toDataURL("image/png"));
+      }catch(err){ cb(e.target.result); }
+    };
+    img.onerror=function(){ cb(e.target.result); };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function buildIconPicker(host,cur,cb){
   host.innerHTML="";var grid=document.createElement("div");grid.className="icongrid";grid.style.width="100%";
   ICON_POOL.forEach(function(ic){var d=document.createElement("div");d.className="icb"+(ic===cur?" sel":"");d.textContent=ic;d.onclick=function(){Array.prototype.slice.call(grid.querySelectorAll(".icb")).forEach(function(x){x.classList.remove("sel");});d.classList.add("sel");cb(ic);};grid.appendChild(d);});
   host.appendChild(grid);
   var up2=document.createElement("button");up2.className="btn sm";up2.textContent="🖼️ 직접 업로드";up2.style.marginTop="6px";
-  up2.onclick=function(){var f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=function(){var fl=f.files[0];if(!fl)return;var rd=new FileReader();rd.onload=function(){cb(rd.result);};rd.readAsDataURL(fl);};f.click();};
+  up2.onclick=function(){var f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=function(){var fl=f.files[0];if(!fl)return;resizeImageFileKeepAlpha(fl,200,function(dataUrl){cb(dataUrl);});};f.click();};
   host.appendChild(up2);
 }
 /* 이미지 업로드 */
 $("#npcImgPick").onclick=function(){$("#npcImgFile").click();};
-$("#npcImgFile").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){state.npc.img=r.result;state.npc.imgName=f.name;save();$("#npcImgName").textContent=f.name;applyNpcFace();};r.readAsDataURL(f);};
+$("#npcImgFile").onchange=function(){var f=this.files[0];if(!f)return;resizeImageFileKeepAlpha(f,900,function(dataUrl){state.npc.img=dataUrl;state.npc.imgName=f.name;save();$("#npcImgName").textContent=f.name;applyNpcFace();});};
 $("#npcImgClear").onclick=function(){state.npc.img=null;state.npc.imgName="";save();$("#npcImgName").textContent="기본 아이콘";applyNpcFace();};
 $("#badgeImgPick").onclick=function(){$("#badgeImgFile").click();};
-$("#badgeImgFile").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){state.user.img=r.result;state.user.imgName=f.name;save();$("#badgeImgName").textContent=f.name;drawMap();};r.readAsDataURL(f);};
+$("#badgeImgFile").onchange=function(){var f=this.files[0];if(!f)return;resizeImageFileKeepAlpha(f,600,function(dataUrl){state.user.img=dataUrl;state.user.imgName=f.name;save();$("#badgeImgName").textContent=f.name;drawMap();});};
 $("#badgeImgClear").onclick=function(){state.user.img=null;state.user.imgName="";save();$("#badgeImgName").textContent="기본 아이콘";drawMap();};
 $("#bannerPick").onclick=function(){$("#bannerFile").click();};
-$("#bannerFile").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){state.title.banner=r.result;state.title.bannerName=f.name;save();$("#bannerName").textContent=f.name;applyTitle();};r.readAsDataURL(f);};
+$("#bannerFile").onchange=function(){var f=this.files[0];if(!f)return;resizeImageFileKeepAlpha(f,1600,function(dataUrl){state.title.banner=dataUrl;state.title.bannerName=f.name;save();$("#bannerName").textContent=f.name;applyTitle();});};
 $("#bannerClear").onclick=function(){state.title.banner=null;state.title.bannerName="";save();$("#bannerName").textContent="배너 없음";applyTitle();};
 
 /* ===================== 화면 설정 ===================== */
@@ -1555,6 +1682,8 @@ function initScreen(){
   $("#tcNpcName").value=tmpS.textNpcName;$("#tcNpcName").oninput=function(){tmpS.textNpcName=this.value;};
   $("#tcNpcBody").value=tmpS.textNpcBody;$("#tcNpcBody").oninput=function(){tmpS.textNpcBody=this.value;};
   seg("#oriSeg",tmpS.orientation,function(v){tmpS.orientation=v;});seg("#themeSeg",tmpS.theme,function(v){tmpS.theme=v;});
+  $("#bezelSlider").value=tmpS.bezel==null?2:tmpS.bezel;$("#bezelVal").textContent=(tmpS.bezel==null?2:tmpS.bezel)+"%";
+  $("#bezelSlider").oninput=function(){tmpS.bezel=+this.value;$("#bezelVal").textContent=this.value+"%";};
 }
 function seg(sel,val,cb){$$(sel+" .btn").forEach(function(b){b.classList.toggle("act",b.dataset.v===val);b.onclick=function(){$$(sel+" .btn").forEach(function(x){x.classList.remove("act");});b.classList.add("act");cb(b.dataset.v);};});}
 $("#screenOk").onclick=function(){state.screen=clone(tmpS);save();applyAll();closeWin("screenWin");toast("화면 설정을 적용했어요");};
@@ -1646,10 +1775,71 @@ function initEtc(){
 function spName(v){return v<45?"느리게":(v<100?"보통":(v<180?"빠르게":(v<260?"아주 빠르게":"번개처럼")));}
 $("#etcOk").onclick=function(){state.etc=clone(tmpE);save();if(selBooth&&state.slots.some(function(s){return s.boothId===selBooth;}))route=computeRoute(selBooth);drawMap();applySound();updateIdleSound();closeWin("etcWin");toast("기타 설정을 적용했어요");};
 
+/* ===================== 가로모드 우측 포스터 패널 ===================== */
+var posterRotateTimer=null, lastPosterId=null;
+function boothsWithPoster(){ return state.booths.filter(function(b){return b.poster;}); }
+/* 포스터 노출 순서: 같은 테마끼리 구역 순서대로 먼저 다 보여준 뒤, 다음 테마로 넘어가는 순환열 */
+function orderedPosterQueue(){
+  var queue=[];
+  state.themes.forEach(function(th){
+    var list=state.booths.filter(function(b){return b.theme===th.id&&b.poster;});
+    list.sort(function(a,b){return boothSortKey(a)-boothSortKey(b);});
+    queue=queue.concat(list);
+  });
+  return queue;
+}
+function pickNextPoster(){
+  var q=orderedPosterQueue();
+  if(!q.length)return null;
+  if(!lastPosterId)return q[0];
+  var idx=-1;
+  for(var i=0;i<q.length;i++)if(q[i].id===lastPosterId){idx=i;break;}
+  return q[(idx+1)%q.length];
+}
+function showPlaceholder(icon,text){
+  var img=$("#posterImg"),ph=$("#posterPlaceholder");
+  img.style.display="none";ph.style.display="flex";
+  ph.querySelector(".ph-icon").textContent=icon;
+  ph.querySelector(".ph-text").innerHTML=text;
+}
+function showPosterImg(src){
+  var img=$("#posterImg"),ph=$("#posterPlaceholder");
+  ph.style.display="none";
+  img.src=src;img.style.display="block";
+  img.style.animation="none";void img.offsetWidth;img.style.animation="posterFade .35s ease";
+}
+function updatePosterPanel(){
+  if(!$("#posterPanel"))return;
+  clearTimeout(posterRotateTimer);
+  if(state.screen.orientation==="portrait")return;   // 세로모드에서는 포스터 패널이 숨겨져 있어 굳이 갱신하지 않음
+  var b=findSelectable(selBooth);
+  if(b&&b.isGate){
+    lastPosterId=null;
+    showPlaceholder(b.icon||"🚪","학교 입구로<br>안내하고 있어요");
+    return;
+  }
+  if(b){
+    lastPosterId=b.id;
+    if(b.poster)showPosterImg(b.poster);
+    else showPlaceholder(b.icon||"⭐",esc(b.name)+"의 포스터가<br>아직 준비되지 않았어요");
+    return;
+  }
+  // 대기 상태: 업로드된 부스 포스터 중 하나를 무작위로 크게 보여주고, 일정 시간마다 자동으로 바뀜
+  var pick=pickNextPoster();
+  if(pick){
+    lastPosterId=pick.id;
+    showPosterImg(pick.poster);
+    posterRotateTimer=setTimeout(updatePosterPanel,7000);
+  }else{
+    lastPosterId=null;
+    showPlaceholder("🎁","부스를 선택하면<br>포스터가 여기 크게 나타나요");
+  }
+}
+
 /* ===================== 대기화면 배경음 ===================== */
 function applySound(){
   var a=$("#bgSound");
-  if(!a.src)a.src=MAIN_SOUND;
+  if(!a.src){a.src=MAIN_SOUND;a.load();}
   a.volume=clamp((state.etc.soundVolume==null?55:state.etc.soundVolume)/100,0,1);
 }
 function applySoundVolumePreview(v){ $("#bgSound").volume=clamp(v/100,0,1); }
@@ -1660,7 +1850,14 @@ function tryPlaySound(){
   var a=$("#bgSound");
   if(!a.paused)return;
   var p=a.play();
-  if(p&&p.catch)p.catch(function(){ /* 자동재생 정책으로 막히면 첫 터치 때 다시 시도 */ });
+  if(p&&p.then)p.then(function(){soundUnlocked=true;updateSoundHint();}).catch(function(){ /* 자동재생 정책으로 막히면 힌트 버튼이나 다음 터치 때 다시 시도 */ });
+}
+// 첫 소리가 메뉴 터치에 묻혀 안 들리는 문제를 막기 위해, 대기 상태에서 아직 소리가 한 번도
+// 재생된 적 없다면 "눌러서 소리 켜기" 버튼을 살짝 띄워줌(이걸 누르면 확실하게 들림)
+function updateSoundHint(){
+  var el=$("#soundHint");
+  var show=(state.etc.soundEnabled!==false)&&!soundUnlocked&&isIdleNow();
+  el.classList.toggle("show",show);
 }
 function updateIdleSound(){
   var a=$("#bgSound");
@@ -1671,7 +1868,12 @@ function updateIdleSound(){
   }else{
     if(!a.paused)a.pause();
   }
+  updateSoundHint();
 }
+$("#soundHint").onclick=function(){
+  soundUnlocked=true;
+  updateIdleSound();
+};
 // 한 번 재생이 끝나면(loop 속성을 뺐으므로 ended가 정상적으로 발생) 바로 이어붙이지 않고,
 // 설정한 간격(기본 60초)만큼 조용히 있다가 다시 재생 — 여전히 대기 상태일 때만
 $("#bgSound").addEventListener("ended",function(){
@@ -1681,7 +1883,9 @@ $("#bgSound").addEventListener("ended",function(){
   clearTimeout(soundGapTimer);
   soundGapTimer=setTimeout(function(){ if(isIdleNow()&&state.etc.soundEnabled!==false)tryPlaySound(); },gap);
 });
-/* 브라우저 자동재생 정책 대응: 화면을 한 번이라도 터치/클릭하면 그때 재생을 시도 */
+/* 브라우저 자동재생 정책 대응: 화면 어디든 한 번이라도 터치/클릭하면 그때 재생을 시도(보조 수단).
+   가장 확실한 방법은 위의 "눌러서 소리 켜기" 버튼이며, 이건 혹시 그 버튼을 못 보고 다른 곳을
+   먼저 눌렀을 때를 위한 보조 장치임 */
 document.addEventListener("pointerdown",function unlock(){
   if(soundUnlocked)return; soundUnlocked=true;
   updateIdleSound();
@@ -1755,9 +1959,10 @@ function bootWithState(remote){
   if(!state.gate)state.gate={enabled:false,theme:state.themes[0]?state.themes[0].id:null,name:"학교 입구",icon:"🚪",desc:"학교 정문으로 안내해드릴게요."};
   if(!state.etc.soundVolume&&state.etc.soundVolume!==0)state.etc.soundVolume=55;
   if(state.etc.soundGap==null)state.etc.soundGap=60;
+  if(state.screen.bezel==null)state.screen.bezel=2;
   if(state.etc.soundEnabled==null)state.etc.soundEnabled=true;
   buildSlots();applyScreen();applyTitle();applyNpcFace();applySound();
-  drawMap();renderThemes();renderBoothPanel();renderNpc();updateIdleSound();
+  drawMap();renderThemes();renderBoothPanel();renderNpc();updateIdleSound();updatePosterPanel();
   try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}   // 동기화 서버가 최신 상태이므로 이번엔 서버로 되쏘지 않음
 }
 (function(){
