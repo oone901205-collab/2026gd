@@ -505,14 +505,16 @@ body.dark .bcell.edge{background:#1b3a2a;border-color:#2f6a48;}
     <div class="field"><label>안내 뱃지 이동 속도 <span id="spVal">보통</span></label><input type="range" id="speed" min="20" max="320" value="90"></div>
     <div class="field"><label class="inline" style="cursor:pointer"><input type="checkbox" id="soundEnabled" style="width:20px;height:20px"> 대기화면 배경음 재생</label>
       <div class="hint">아무 부스도 선택하지 않은 대기 상태일 때 재생되고, 부스를 선택하면 멈춰요.</div></div>
-    <div class="field" style="margin-bottom:0"><label>배경음 크기 <span id="volVal">55%</span></label><input type="range" id="soundVolume" min="0" max="100" value="55"></div>
+    <div class="field"><label>배경음 크기 <span id="volVal">55%</span></label><input type="range" id="soundVolume" min="0" max="100" value="55"></div>
+    <div class="field" style="margin-bottom:0"><label>다시 재생까지 간격 <span id="gapVal">60초</span></label><input type="range" id="soundGap" min="0" max="180" step="5" value="60">
+      <div class="hint">한 번 재생된 뒤, 이 시간만큼 조용히 있다가 다시 재생돼요. 0으로 두면 끊김 없이 계속 반복됩니다.</div></div>
   </div>
   <div class="ft"><button class="btn gray" data-close="etcWin">취소</button><button class="btn green" id="etcOk">적용</button></div>
 </div></div>
 
 <div id="lockScreen"><div class="card"><div class="lk">🔒</div><div style="font-family:'Jua';margin:8px 0">터치가 잠겼습니다</div><div class="hint">해제하려면 아래 버튼을 3초간 누르세요</div><button class="btn coral" id="unlockBtn" style="margin-top:12px">🔓 길게 눌러 해제</button></div></div>
 <div id="kb"><div id="kbEcho"></div><div id="kbKeys"></div></div>
-<audio id="bgSound" loop preload="auto"></audio>
+<audio id="bgSound" preload="auto"></audio>
 <script>
 "use strict";
 
@@ -654,7 +656,7 @@ function defaults(){
     screen:{ratio:"9:16",orientation:"portrait",theme:"light",font:"'Black Han Sans', sans-serif",fontScale:115,
             bgTop:"#dff1ff",bgMid:"#bfe0fb",bgBot:"#a7d0f4",fieldBright:10,
             textTitle:"#26324a",textMenu:"#26324a",textNpcName:"#2a5bb0",textNpcBody:"#5f6f8c"},
-    etc:{arrowColor:"#ff5a7a",arrowWidth:8,speed:90,soundEnabled:true,soundVolume:55}
+    etc:{arrowColor:"#ff5a7a",arrowWidth:8,speed:90,soundEnabled:true,soundVolume:55,soundGap:60}
   };
 }
 
@@ -1603,6 +1605,8 @@ function initEtc(){
   $("#soundEnabled").onchange=function(){tmpE.soundEnabled=this.checked;};
   $("#soundVolume").value=tmpE.soundVolume==null?55:tmpE.soundVolume;$("#volVal").textContent=($("#soundVolume").value)+"%";
   $("#soundVolume").oninput=function(){tmpE.soundVolume=+this.value;$("#volVal").textContent=this.value+"%";applySoundVolumePreview(+this.value);};
+  $("#soundGap").value=tmpE.soundGap==null?60:tmpE.soundGap;applySoundGapPreview(+$("#soundGap").value);
+  $("#soundGap").oninput=function(){tmpE.soundGap=+this.value;applySoundGapPreview(+this.value);};
 }
 function spName(v){return v<45?"느리게":(v<100?"보통":(v<180?"빠르게":(v<260?"아주 빠르게":"번개처럼")));}
 $("#etcOk").onclick=function(){state.etc=clone(tmpE);save();if(selBooth&&state.slots.some(function(s){return s.boothId===selBooth;}))route=computeRoute(selBooth);drawMap();applySound();updateIdleSound();closeWin("etcWin");toast("기타 설정을 적용했어요");};
@@ -1614,20 +1618,34 @@ function applySound(){
   a.volume=clamp((state.etc.soundVolume==null?55:state.etc.soundVolume)/100,0,1);
 }
 function applySoundVolumePreview(v){ $("#bgSound").volume=clamp(v/100,0,1); }
-var soundUnlocked=false;
+function applySoundGapPreview(v){ $("#gapVal").textContent=v==0?"바로 반복":(v+"초"); }
+var soundUnlocked=false, soundGapTimer=null;
+function isIdleNow(){ return (!selTheme && !selBooth); }
+function tryPlaySound(){
+  var a=$("#bgSound");
+  if(!a.paused)return;
+  var p=a.play();
+  if(p&&p.catch)p.catch(function(){ /* 자동재생 정책으로 막히면 첫 터치 때 다시 시도 */ });
+}
 function updateIdleSound(){
   var a=$("#bgSound");
-  var idle=(!selTheme && !selBooth);
   var enabled=state.etc.soundEnabled!==false;
-  if(idle&&enabled){
-    if(a.paused){
-      var p=a.play();
-      if(p&&p.catch)p.catch(function(){ /* 자동재생 정책으로 막히면 첫 터치 때 다시 시도 */ });
-    }
+  clearTimeout(soundGapTimer);
+  if(isIdleNow()&&enabled){
+    tryPlaySound();
   }else{
     if(!a.paused)a.pause();
   }
 }
+// 한 번 재생이 끝나면(loop 속성을 뺐으므로 ended가 정상적으로 발생) 바로 이어붙이지 않고,
+// 설정한 간격(기본 60초)만큼 조용히 있다가 다시 재생 — 여전히 대기 상태일 때만
+$("#bgSound").addEventListener("ended",function(){
+  if(!isIdleNow()||state.etc.soundEnabled===false)return;
+  var gap=(state.etc.soundGap==null?60:state.etc.soundGap)*1000;
+  if(gap<=0){ tryPlaySound(); return; }
+  clearTimeout(soundGapTimer);
+  soundGapTimer=setTimeout(function(){ if(isIdleNow()&&state.etc.soundEnabled!==false)tryPlaySound(); },gap);
+});
 /* 브라우저 자동재생 정책 대응: 화면을 한 번이라도 터치/클릭하면 그때 재생을 시도 */
 document.addEventListener("pointerdown",function unlock(){
   if(soundUnlocked)return; soundUnlocked=true;
@@ -1701,6 +1719,7 @@ function bootWithState(remote){
   if(state.title.scale==null)state.title.scale=100;
   if(!state.gate)state.gate={enabled:false,theme:state.themes[0]?state.themes[0].id:null,name:"학교 입구",icon:"🚪",desc:"학교 정문으로 안내해드릴게요."};
   if(!state.etc.soundVolume&&state.etc.soundVolume!==0)state.etc.soundVolume=55;
+  if(state.etc.soundGap==null)state.etc.soundGap=60;
   if(state.etc.soundEnabled==null)state.etc.soundEnabled=true;
   buildSlots();applyScreen();applyTitle();applyNpcFace();applySound();
   drawMap();renderThemes();renderBoothPanel();renderNpc();updateIdleSound();
