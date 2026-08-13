@@ -1293,8 +1293,8 @@ function applyNpcFace(){
   document.documentElement.style.setProperty("--npcScale",((state.npc.scale||100)/100).toFixed(3));
 }
 $("#mapResetBtn").onclick=function(){
-  selBooth=null;route=null;walker.dist=0;walker.pauseUntil=0;
-  renderBoothPanel();renderNpc();drawMap();updateIdleSound();updatePosterPanel();toast("경로를 초기화했어요");
+  selBooth=null;selTheme=null;route=null;walker.dist=0;walker.pauseUntil=0;
+  renderThemes();renderBoothPanel();renderNpc();drawMap();updateIdleSound();updatePosterPanel();toast("처음 상태로 초기화했어요");
 };
 
 /* ===================== 적용 ===================== */
