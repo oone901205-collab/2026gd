@@ -56,12 +56,11 @@ h1,h2,h3,button{font-family:'Jua',sans-serif;font-weight:400;}
 #mainPanel{position:relative;flex:1 1 auto;min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:stretch;}
 /* 세로모드에서는 포스터 영역을 완전히 숨김(0폭) → mainPanel이 전체 폭을 그대로 차지 */
 #posterPanel{display:none;position:relative;flex:0 0 0;overflow:hidden;}
-/* 우측 포스터는 A4 세로(210:297) 비율 이미지를 쓸 예정이라, 지도 영역(2/3)에서 남던 좌우 여백을
-   줄이고 그만큼을 포스터 영역에 더 배분함(지도 실제 렌더 비율 기준 실측 계산: 약 46:54) */
-body:not(.portrait) #posterPanel{display:flex;flex:0 0 54%;flex-direction:column;
+/* 우측 포스터는 A4 세로(210:297) 비율 이미지를 쓸 예정. 일부 여백이 생기더라도 좌측(지도) 60 : 우측(포스터) 40 비율로 고정 */
+body:not(.portrait) #posterPanel{display:flex;flex:0 0 40%;flex-direction:column;
   background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.28));
   border-left:3px solid rgba(255,255,255,.6);box-shadow:-6px 0 18px rgba(20,34,58,.12);}
-body:not(.portrait) #mainPanel{flex:0 0 46%;}
+body:not(.portrait) #mainPanel{flex:0 0 60%;}
 #posterInner{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;}
 #posterImg{display:none;width:100%;height:100%;object-fit:contain;border-radius:14px;
   box-shadow:0 10px 26px rgba(20,34,58,.28);animation:posterFade .35s ease;}
@@ -156,14 +155,14 @@ body.dark .boothChip .nm{color:var(--tc-menu);}
 #npcFace .ph{font-size:min(9vh,54px);filter:drop-shadow(0 4px 6px var(--shadow));}
 /* 말풍선: 남은 3/4 영역, 배경과 구분되고 입체감 있게 */
 #npcBubble{flex:1 1 75%;width:75%;min-width:0;margin-left:-8px;margin-bottom:0;position:relative;
-  border:4px solid #fff;border-radius:20px;padding:10px 14px 11px 20px;
+  border:4px solid #fff;border-radius:20px;padding:8px 14px 8px 20px;
   background:linear-gradient(180deg,#ffffff,#eef4fc);
   box-shadow:0 7px 0 rgba(20,34,58,.16),0 12px 22px var(--shadow);}
 body.dark #npcBubble{background:linear-gradient(180deg,#2a3450,#222c44);}
-#npcName{font-family:'Jua';font-size:calc(14px * var(--fsz));color:var(--tc-npc-name);margin-bottom:3px;text-align:center;padding:0 78px 0 8px;}
+#npcName{font-family:'Jua';font-size:calc(13px * var(--fsz));color:var(--tc-npc-name);margin-bottom:2px;text-align:center;padding:0 78px 0 8px;}
 #npcBubble.big #npcName{color:var(--tc-npc-name);}
-#npcTitle{font-family:'Jua';font-size:calc(clamp(16px,2.2vh,22px) * var(--fsz));color:var(--tc-npc-body);display:none;margin-bottom:2px;}
-#npcText{font-size:calc(clamp(13px,1.8vh,16px) * var(--fsz));line-height:1.5;color:var(--tc-npc-body);max-height:14vh;overflow-y:auto;}
+#npcTitle{font-family:'Jua';font-size:calc(clamp(14px,1.9vh,19px) * var(--fsz));color:var(--tc-npc-body);display:none;margin-bottom:1px;}
+#npcText{font-size:calc(clamp(12px,1.6vh,15px) * var(--fsz));line-height:1.38;color:var(--tc-npc-body);max-height:9vh;overflow-y:auto;}
 #npcBubble::after{content:"";position:absolute;left:-2px;bottom:18px;width:16px;height:16px;transform:rotate(45deg);
   background:linear-gradient(135deg,#fff,#eef4fc);border-left:4px solid #fff;border-bottom:4px solid #fff;}
 /* 경로 초기화 버튼: 부스 선택 중일 때만 노출. 이름줄이 가운데 정렬될 수 있도록 흐름 밖(우상단 고정)으로 뺌 */
